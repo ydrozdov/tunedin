@@ -1,0 +1,245 @@
+<?php
+namespace TN\Controller;
+
+use Silex\Application;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Validator\Constraints as Assert;
+
+/**
+ * REST controller
+ * @author yuriy
+ *
+ */
+class RestController
+{
+    /**
+     * Returns a list of movies/shows in the IMDB file, considering requested 
+     * offset, limit, sort and filter.
+     * 
+     * @param Request $request
+     * @param Application $app
+     * @return JsonResponse
+     */
+    public function indexAction(Request $request, Application $app)
+    {
+        
+        $solution = function (&$A, $X) {
+            $N = sizeof($A);
+            if ($N == 0) {
+                return -1;
+            }
+            $l = 0;
+            $r = $N - 1;
+            while ($l < $r) {
+                var_dump($l);
+                var_dump($r);
+                $m = (int)(($l + $r) / 2);
+                echo "<br> m="; var_dump($m);echo "<br>";
+                echo "---" . $A[$m];
+                if ($A[$m] > $X) {
+                    $r = $m - 1;
+                } else {
+                    $l = $m + 1;
+                }
+            }
+            var_dump($l);
+            var_dump($r);
+            
+            $l--;
+            if ($A[$l] == $X) {
+                return $l;
+            }
+            else return -1;
+        };
+        
+        $A = array(1,2,3,5,6);
+        echo "<br>" . $solution($A, 2);
+        
+        
+        
+        
+        
+        
+        
+        die;
+        $initialize = $request->query->get('initialize');
+        if ($initialize && 1 == $initialize) {
+            return $this->initAction($request, $app);
+        }
+        
+        if (!$this->isInitialized($app)) {
+            return new JsonResponse(
+                array(
+                    'status' => 400,
+                    'IMDB file wasn\’t downloaded yet'
+            ));
+        }
+        
+        $limit = $request->query->get('limit', 100);
+        $offset = $request->query->get('offset', 0);
+        $sort = $request->query->get('sort');
+        $filterTitle = $request->query->get('filterTitle');
+        
+        $constraint = new Assert\Collection(
+            array(
+                'limit' => new Assert\Range(array('min' => 0, 'max' => 100)),
+                'offset' => new Assert\Range(array('min' => 0)),
+                'sort' => new Assert\Choice(array('choices' => array('name', 'year'))),
+        ));
+        
+        $errors = $app['validator']->validateValue(
+            array(
+                'limit' => $limit,
+                'offset' => $offset,
+                'sort' => $sort
+            ),
+            $constraint
+        );
+        
+        if (count($errors) > 0) {
+            return $this->returnErrors($errors);
+        }
+        
+        /**
+         * @var TN\Model\ImdbModel
+         */
+        $model = $app['container']->get('model');
+        
+        $model->setLimit($limit)
+            ->setOffset($offset)
+            ->setSort($sort)
+            ->setFilterTitle($filterTitle);
+        
+        return new JsonResponse(
+            array(
+                'status' => 200,
+                'shows' => $model->getShows(),
+                'numberOfAllResults' => $model->getTotal(),
+                'numberOfReturnedResults' => $model->getNumberOfReturnedResults(),
+                'limit' => $model->getLimit(),
+                'offset' => $model->getOffset()
+            ),
+            200,
+            array('Content-Type' => 'application/json')
+        );
+    }
+    
+    /**
+     * Downloads the IMDB movie database file from remote location
+     * 
+     * @param Request $request
+     * @param Application $app
+     * @return JsonResponse
+     */
+    public function initAction(Request $request, Application $app)
+    {
+        $remoteFileSaver = $app['container']->get('filesaver');
+        $remoteFileSaver->save();
+        
+        return new JsonResponse(array('status' => 200));
+    }
+    
+    /**
+     * Deletes line
+     * @param Request $request
+     * @param Application $app
+     * @return \Symfony\Component\HttpFoundation\JsonResponse
+     */
+    public function deleteAction(Request $request, Application $app)
+    {
+        $lineNumber = $request->query->get('lineNumber');
+        
+        /**
+         * @var TN\Model\ImdbModel
+         */
+        $model = $app['container']->get('model');
+        
+        $constraint = array(
+            new Assert\NotBlank(), 
+            new Assert\Range(array('min' => 0, 'max' => $model->getTotal()))
+        );
+        
+        $errors = $app['validator']->validateValue($lineNumber, $constraint);
+        
+        if (count($errors) > 0) {
+            return new JsonResponse(array('status' => 400, 'lineNumber=' . (string) $errors));
+        }
+        
+        $model->delete($lineNumber);
+        
+        return new JsonResponse(array('status' => 200));
+    }
+    
+    /**
+     * Updates movie title at requested line number
+     * @param Request $request
+     * @param Application $app
+     * @return \Symfony\Component\HttpFoundation\JsonResponse
+     */
+    public function patchAction(Request $request, Application $app)
+    {
+        $lineNumber = $request->request->get('lineNumber');
+        $title = $request->request->get('title');
+
+        /**
+         * @var TN\Model\ImdbModel
+         */
+        $model = $app['container']->get('model');
+        
+        $constraint = new Assert\Collection(
+            array(
+                'lineNumber' => array(
+                    new Assert\NotBlank(), 
+                    new Assert\Range(array('min' => 0, 'max' => $model->getTotal()))
+                ),
+                'title' => new Assert\NotBlank()
+        ));
+        
+        $errors = $app['validator']->validateValue(
+            array(
+                'lineNumber' => $lineNumber,
+                'title' => $title
+            ),
+            $constraint
+        );
+        
+        if (count($errors) > 0) {
+            return $this->returnErrors($errors);
+        }
+        
+        $model->patch($lineNumber, $title);
+        
+        return new JsonResponse(array('status' => 200));
+    }
+    
+    /**
+     * Returns response with error messages
+     * @param \IteratorAggregate $errors
+     * @return JsonResponse
+     */
+    protected function returnErrors(\IteratorAggregate $errors)
+    {
+        $errorMessages = array();
+        foreach ($errors as $error) {
+            $errorMessages[] = $error->getPropertyPath() . ' ' . $error->getMessage();
+        }
+        
+        return new JsonResponse(array('status' => 400, $errorMessages));
+    }
+    
+    /**
+     * Checks if IMDB file downloaded
+     * @param Application $app
+     */
+    protected function isInitialized(Application $app)
+    {
+        $dbFile = $app['container']->getParameter('upload.file');
+        if (!file_exists($dbFile)) {
+            return false;
+        }
+        
+        return true;
+    }
+
+}

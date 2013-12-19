@@ -1,0 +1,81 @@
+<?php
+namespace TN\Utility;
+
+/**
+ * Class for a remote file manipulation.
+ * @author yuriy
+ *
+ */
+class RemoteFileSaver
+{
+    /**
+     * Instance of FtpWrapper.
+     * @var FtpWrapper
+     */
+    protected $ftp;
+    
+    /**
+     * Instance of Decompressor
+     * @var Decompressor
+     */
+    protected $decompressor;
+    
+    /**
+     * The local file path
+     * @var string
+     */
+    protected $local;
+    
+    /**
+     * The remote file path.
+     * @var string
+     */
+    protected $remote;
+    
+    /**
+     * Class constructor
+     * 
+     * @param FtpWrapper $ftp
+     * @param string $local
+     * @param string $remote
+     */
+    public function __construct(
+        FtpWrapper $ftp,
+        Decompressor $decompressor,
+        $local,
+        $remote
+    ) {
+        $this->ftp = $ftp;
+        $this->decompressor = $decompressor;
+        $this->local = $local;
+        $this->remote = $remote;
+    }
+    
+    /**
+     * Retrieves a remote file and saves it into a local file.
+     */
+    public function save()
+    {
+        $this->ftp->get($this->local, $this->remote);
+        $decompressedFile = $this->decompressor->decompress();
+        $this->removeUselessLines($decompressedFile);
+    }
+    
+    /**
+     * 
+     * @param string $file
+     * @throws \InvalidArgumentException
+     * @return RemoteFileSaver
+     */
+    protected function removeUselessLines($file)
+    {
+        if (!file_exists($file)) {
+            throw new \InvalidArgumentException('File does not exists.');
+        }
+        
+        exec("sed -i '1,15d' " . escapeshellarg($file));
+        exec('sed -ie  \'$d\' ' . escapeshellarg($file));
+        
+        return $this;
+    }
+}

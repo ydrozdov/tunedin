@@ -1,0 +1,27 @@
+parameters:
+  upload.compressed: '../upload/imdb.gz'
+  upload.file: '../upload/imdb'
+  
+  ftp.server: 'ftp.fu-berlin.de'
+  ftp.user: 'anonymous'
+  ftp.pass: ''
+  ftp.file: '/pub/misc/movies/database/movies.list.gz'
+
+services:
+  silex: @silex.framework
+  silex.framework:
+    class: Silex\Application
+  ftpwrapper:
+    class: TN\Utility\FtpWrapper
+    arguments: [%ftp.server%, %ftp.user%, %ftp.pass%]
+  decompressor:
+    class: TN\Utility\Decompressor
+    arguments: [%upload.compressed%, %upload.file%]
+  filesaver:
+    class: TN\Utility\RemoteFileSaver
+    arguments: [@ftpwrapper, @decompressor, %upload.compressed%, %ftp.file%]
+  parser:
+    class: TN\Utility\Parser
+  model:
+    class: TN\Model\ImdbModel
+    arguments: [%upload.file%, @parser]

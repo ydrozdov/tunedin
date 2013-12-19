@@ -1,0 +1,13 @@
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    convertErrorsToExceptions="true"
+    convertNoticesToExceptions="true"
+    convertWarningsToExceptions="true"
+    stopOnFailure="false"
+    verbose="true"
+    bootstrap="./phpunit_bootstrap.php">
+    <testsuites>
+        <testsuite name="Application Test Suite">
+            <directory>./tests/</directory>
+        </testsuite>
+    </testsuites>
+</phpunit>

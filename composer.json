@@ -1,0 +1,12 @@
+{
+    "require": {
+        "silex/silex": "~1.1",
+        "symfony/dependency-injection": "2.5.*@dev",
+        "symfony/config": "2.5.*@dev",
+        "symfony/yaml": "2.5.*@dev",
+        "symfony/validator": "~2.3"
+    },
+    "autoload": {
+        "psr-0": {"TN": "src/"}
+    }
+}
