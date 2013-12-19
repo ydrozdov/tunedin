@@ -23,46 +23,6 @@ class RestController
      */
     public function indexAction(Request $request, Application $app)
     {
-        
-        $solution = function (&$A, $X) {
-            $N = sizeof($A);
-            if ($N == 0) {
-                return -1;
-            }
-            $l = 0;
-            $r = $N - 1;
-            while ($l < $r) {
-                var_dump($l);
-                var_dump($r);
-                $m = (int)(($l + $r) / 2);
-                echo "<br> m="; var_dump($m);echo "<br>";
-                echo "---" . $A[$m];
-                if ($A[$m] > $X) {
-                    $r = $m - 1;
-                } else {
-                    $l = $m + 1;
-                }
-            }
-            var_dump($l);
-            var_dump($r);
-            
-            $l--;
-            if ($A[$l] == $X) {
-                return $l;
-            }
-            else return -1;
-        };
-        
-        $A = array(1,2,3,5,6);
-        echo "<br>" . $solution($A, 2);
-        
-        
-        
-        
-        
-        
-        
-        die;
         $initialize = $request->query->get('initialize');
         if ($initialize && 1 == $initialize) {
             return $this->initAction($request, $app);
@@ -179,8 +139,8 @@ class RestController
      */
     public function patchAction(Request $request, Application $app)
     {
-        $lineNumber = $request->request->get('lineNumber');
-        $title = $request->request->get('title');
+        $lineNumber = $request->query->get('lineNumber');
+        $title = $request->query->get('title');
 
         /**
          * @var TN\Model\ImdbModel
